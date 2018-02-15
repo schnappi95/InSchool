@@ -6,3 +6,5 @@ package com.example.schnappi.inschool;
 
 public class CreateGeofence {
 }
+
+
