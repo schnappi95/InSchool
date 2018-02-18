@@ -1,9 +1,11 @@
 package com.example.schnappi.inschool;
+
 import android.app.NotificationManager;
 import android.app.PendingIntent;
 import android.content.Context;
 import android.content.Intent;
 import android.content.pm.PackageManager;
+import android.media.AudioManager;
 import android.net.Uri;
 import android.os.Build;
 import android.provider.Settings;
@@ -14,6 +16,7 @@ import android.os.Bundle;
 import android.util.Log;
 import android.Manifest;
 import android.view.View;
+import android.widget.Button;
 import android.widget.Toast;
 
 import com.google.android.gms.location.Geofence;
@@ -37,8 +40,8 @@ public class MainActivity extends AppCompatActivity /*implements OnCompleteListe
 
     private PendingIntent mGeofencePendingIntent;
 
-
-
+    private Button addGeofenceButton;
+    private Button removeGeofenceButton;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -48,34 +51,40 @@ public class MainActivity extends AppCompatActivity /*implements OnCompleteListe
 
         createGeoFence();
 
-
-
         mGeofencePendingIntent = null;
 
 
         mGeofencingClient = LocationServices.getGeofencingClient(this);
 
         fuckingsLydlosPermission();
+
+
+        addGeofenceButton = findViewById(R.id.activateButton);
+        removeGeofenceButton = findViewById(R.id.deactivateButton);
+        removeGeofenceButton.setEnabled(false);
+        // activate the geofence
+        addGeofenceButton.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View view) {
+                addGeofences();
+                removeGeofenceButton.setEnabled(true);
+                addGeofenceButton.setEnabled(false);
+            }
+        });
+
+        // deactivate the geofence
+        removeGeofenceButton.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View view) {
+                removeGeofence();
+
+                skruPåLyd();
+                //skrur av removeButtonm
+                removeGeofenceButton.setEnabled(false);
+                addGeofenceButton.setEnabled(true);
+            }
+        });
     }
-
-    @Override
-    public void onStart() {
-        super.onStart();
-
-        addGeofences();
-    }
-
-    /* FraGoogle
-    @Override
-    public void onStart() {
-        super.onStart();
-        if (!checkPermissions()) {
-            requestPermissions();
-        } else {
-            addGeofences();
-        }
-    } */
-
 
 
     // lager geofence
@@ -134,6 +143,24 @@ public class MainActivity extends AppCompatActivity /*implements OnCompleteListe
                 });
     }
 
+
+    private void removeGeofence()
+    {
+        mGeofencingClient.removeGeofences(getGeofencePendingIntent())
+                .addOnSuccessListener(this, new OnSuccessListener<Void>() {
+                    @Override
+                    public void onSuccess(Void aVoid) {
+                       Log.i(TAG, "removeGeofence: successe");
+                    }
+                })
+                .addOnFailureListener(this, new OnFailureListener() {
+                    @Override
+                    public void onFailure(@NonNull Exception e) {
+                        Log.e(TAG, "removeGeofence: fail");
+                    }
+                });
+    }
+
     private void fuckingsLydlosPermission(){
         NotificationManager notificationManager =
                 (NotificationManager) getApplicationContext().getSystemService(Context.NOTIFICATION_SERVICE);
@@ -149,132 +176,13 @@ public class MainActivity extends AppCompatActivity /*implements OnCompleteListe
         }
     }
 
+    private void skruPåLyd(){
 
-    /*
-    // fra Google
+        AudioManager audio = (AudioManager) getSystemService(Context.AUDIO_SERVICE);
 
-        @SuppressWarnings("MissingPermisson")
-    private void addGeofences()
-    {
-        if(!checkPermissions())
-        {
-            showSnackbar(getString(R.string.insufficient_permissions));
-            Log.i(TAG, "addGeofence: hva faen?");
-            return;
-        }
+        audio.setRingerMode(AudioManager.RINGER_MODE_NORMAL);
+        Toast toast = Toast.makeText(this, "Unmute", Toast.LENGTH_SHORT);
+        toast.show();
 
-        mGeofencingClient.addGeofences(getGeofencingRequest(), getGeofencePendingIntent()).addOnCompleteListener(this);
-        Log.i(TAG, "addGeofence: hva faen to?");
     }
-
-    private void showSnackbar(final String text) {
-        View container = findViewById(android.R.id.content);
-        if (container != null) {
-            Snackbar.make(container, text, Snackbar.LENGTH_LONG).show();
-        }
-    }
-
-    private void showSnackbar(final int mainTextStringId, final int actionStringId,
-                              View.OnClickListener listener) {
-        Snackbar.make(
-                findViewById(android.R.id.content),
-                getString(mainTextStringId),
-                Snackbar.LENGTH_INDEFINITE)
-                .setAction(getString(actionStringId), listener).show();
-    }
-
-
-    private boolean checkPermissions() {
-        int permissionState = ActivityCompat.checkSelfPermission(this,
-                Manifest.permission.ACCESS_FINE_LOCATION);
-        Log.i(TAG, "checkPermissions");
-        return permissionState == PackageManager.PERMISSION_GRANTED;
-    }
-
-
-    private void requestPermissions() {
-        boolean shouldProvideRationale =
-                ActivityCompat.shouldShowRequestPermissionRationale(this,
-                        Manifest.permission.ACCESS_FINE_LOCATION);
-
-        // Provide an additional rationale to the user. This would happen if the user denied the
-        // request previously, but didn't check the "Don't ask again" checkbox.
-        if (shouldProvideRationale) {
-            Log.i(TAG, "Displaying permission rationale to provide additional context.");
-            showSnackbar(R.string.permission_rationale, android.R.string.ok,
-                    new View.OnClickListener() {
-                        @Override
-                        public void onClick(View view) {
-                            // Request permission
-                            ActivityCompat.requestPermissions(MainActivity.this,
-                                    new String[]{Manifest.permission.ACCESS_FINE_LOCATION},
-                                    REQUEST_PERMISSIONS_REQUEST_CODE);
-                        }
-                    });
-        } else {
-            Log.i(TAG, "Requesting permission");
-            // Request permission. It's possible this can be auto answered if device policy
-            // sets the permission in a given state or the user denied the permission
-            // previously and checked "Never ask again".
-            ActivityCompat.requestPermissions(MainActivity.this,
-                    new String[]{Manifest.permission.ACCESS_FINE_LOCATION},
-                    REQUEST_PERMISSIONS_REQUEST_CODE);
-        }
-    }
-
-    @Override
-    public void onRequestPermissionsResult(int requestCode, @NonNull String[] permissions,
-                                           @NonNull int[] grantResults) {
-        Log.i(TAG, "onRequestPermissionResult");
-        if (requestCode == REQUEST_PERMISSIONS_REQUEST_CODE) {
-            if (grantResults.length <= 0) {
-                // If user interaction was interrupted, the permission request is cancelled and you
-                // receive empty arrays.
-                Log.i(TAG, "User interaction was cancelled.");
-            } else if (grantResults[0] == PackageManager.PERMISSION_GRANTED) {
-                Log.i(TAG, "Permission granted.");
-                addGeofences();
-            } else {
-                // Permission denied.
-
-                // Notify the user via a SnackBar that they have rejected a core permission for the
-                // app, which makes the Activity useless. In a real app, core permissions would
-                // typically be best requested during a welcome-screen flow.
-
-                // Additionally, it is important to remember that a permission might have been
-                // rejected without asking the user for permission (device policy or "Never ask
-                // again" prompts). Therefore, a user interface affordance is typically implemented
-                // when permissions are denied. Otherwise, your app could appear unresponsive to
-                // touches or interactions which have required permissions.
-                showSnackbar(R.string.permission_denied_explanation, R.string.settings,
-                        new View.OnClickListener() {
-                            @Override
-                            public void onClick(View view) {
-                                // Build intent that displays the App settings screen.
-                                Intent intent = new Intent();
-                                intent.setAction(
-                                        Settings.ACTION_APPLICATION_DETAILS_SETTINGS);
-                                Uri uri = Uri.fromParts("package",
-                                        BuildConfig.APPLICATION_ID, null);
-                                intent.setData(uri);
-                                intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
-                                startActivity(intent);
-                            }
-                        });
-               // mPendingGeofenceTask = PendingGeofenceTask.NONE;
-            }
-        }
-    }
-
-    @Override
-    public void onComplete(@NonNull Task<Void> task) {
-        if(task.isSuccessful())
-            Toast.makeText(this, "Geofence added", Toast.LENGTH_SHORT).show();
-        else
-            {
-                String errorMessage = "addGeofence fail i onComplete";
-                Log.w(TAG, errorMessage);
-            }
-    }
-    */
 }
